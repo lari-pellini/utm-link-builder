@@ -49,6 +49,22 @@ test('lintUtmUrl is quiet for a clean link', () => {
   assert.deepEqual(lintUtmUrl('https://example.com/?utm_source=newsletter&utm_medium=email&utm_campaign=weekly-digest'), []);
 });
 
+test('lintUtmUrl checks team allow-lists case-insensitively', () => {
+  const allowed = lintUtmUrl(
+    'https://example.com/?utm_source=Newsletter&utm_medium=stories&utm_campaign=weekly',
+    { allowedSources: ['newsletter'], allowedMediums: ['stories'] },
+  );
+  assert.equal(allowed.some((warning) => warning.key === 'utm_medium'), false);
+  assert.ok(allowed.some((warning) => warning.key === 'utm_source' && /uppercase/.test(warning.message)));
+
+  const disallowed = lintUtmUrl(
+    'https://example.com/?utm_source=reddit&utm_medium=push&utm_campaign=weekly',
+    { allowedSources: ['newsletter'], allowedMediums: ['stories'] },
+  );
+  assert.ok(disallowed.some((warning) => warning.key === 'utm_source' && /allowed sources/.test(warning.message)));
+  assert.ok(disallowed.some((warning) => warning.key === 'utm_medium' && /allowed mediums/.test(warning.message)));
+});
+
 test('csv round trip handles quotes and commas', () => {
   const rows = parseCsv('a,b\n"hello, world","say ""hi"""\n');
   assert.deepEqual(rows, [['a', 'b'], ['hello, world', 'say "hi"']]);
@@ -62,4 +78,18 @@ test('cli csv builds links in bulk', () => {
   assert.equal(header.at(-1), 'final_url');
   assert.equal(first.at(-1), 'https://loja.example.com/colecao-verao?utm_source=instagram&utm_medium=social&utm_campaign=verao-2026&utm_content=reels-01');
   assert.equal(broken.at(-1), 'ERROR: utm_source is required');
+});
+
+test('cli lint reads team allow-lists from the config file', () => {
+  const config = fileURLToPath(new URL('../examples/utm.config.json', import.meta.url));
+  const allowed = run(['lint', '--config', config,
+    'https://example.com/?utm_source=newsletter&utm_medium=stories&utm_campaign=weekly']);
+  assert.equal(allowed.ok, true);
+  assert.match(allowed.output, /No problems found/);
+
+  const disallowed = run(['lint', '--config', config,
+    'https://example.com/?utm_source=reddit&utm_medium=push&utm_campaign=weekly']);
+  assert.equal(disallowed.ok, false);
+  assert.match(disallowed.output, /utm_source.*allowed sources/);
+  assert.match(disallowed.output, /utm_medium.*allowed mediums/);
 });

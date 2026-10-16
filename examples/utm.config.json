@@ -1,0 +1,4 @@
+{
+  "allowedSources": ["newsletter", "instagram"],
+  "allowedMediums": ["email", "social", "stories"]
+}

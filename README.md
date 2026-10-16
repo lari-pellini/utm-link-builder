@@ -35,9 +35,15 @@ node src/cli.ts lint "http://example.com/?utm_source=Instagram&utm_medium=storie
 #   ⚠️  utm_source: "Instagram" has uppercase letters; reports are case-sensitive.
 #   ⚠️  utm_medium: "stories" is not a medium GA4 recognises by default; ...
 
+# use your team's allowed values (also auto-loaded from ./utm.config.json)
+node src/cli.ts lint --config examples/utm.config.json \
+  "https://example.com/?utm_source=newsletter&utm_medium=stories&utm_campaign=weekly"
+
 # a whole campaign plan exported from Google Sheets
 node src/cli.ts csv examples/campaigns.csv > links.csv
 ```
+
+The optional JSON config accepts `allowedSources` and `allowedMediums` arrays. A configured medium list replaces GA4's built-in list; without it, the existing GA4 check remains in effect. See [examples/utm.config.json](examples/utm.config.json).
 
 The CSV needs a `url` column plus any of `source`, `medium`, `campaign`, `content`, `term`. A `final_url` column is appended (or `ERROR: …` for incomplete rows). Use `--separator _` if your team prefers `black_friday`.
 
@@ -58,7 +64,7 @@ npm test
 npm run typecheck
 ```
 
-Ideas for contributions: a tiny web UI, a Google Sheets Apps Script version, custom medium allow-lists per team. See [CONTRIBUTING.md](CONTRIBUTING.md).
+Ideas for contributions: a tiny web UI or a Google Sheets Apps Script version. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ---
 

@@ -76,8 +76,15 @@ export interface LintWarning {
   message: string;
 }
 
+export interface LintOptions {
+  /** When set, sources outside this team-specific list are warned about. */
+  allowedSources?: readonly string[];
+  /** When set, this replaces the built-in GA4 medium list. */
+  allowedMediums?: readonly string[];
+}
+
 /** Finds the inconsistencies that usually make campaign reports messy. */
-export function lintUtmUrl(input: string): LintWarning[] {
+export function lintUtmUrl(input: string, options: LintOptions = {}): LintWarning[] {
   const warnings: LintWarning[] = [];
   let url: URL;
   try {
@@ -95,11 +102,28 @@ export function lintUtmUrl(input: string): LintWarning[] {
     if (value !== value.toLowerCase()) warnings.push({ key, message: `"${value}" has uppercase letters; reports are case-sensitive.` });
     if (/\s/.test(value)) warnings.push({ key, message: `"${value}" contains spaces.` });
   }
-  if (utm.utm_medium && !KNOWN_MEDIUMS.has(utm.utm_medium.toLowerCase())) {
-    warnings.push({ key: 'utm_medium', message: `"${utm.utm_medium}" is not a medium GA4 recognises by default; traffic may show up as "Unassigned".` });
+  if (utm.utm_source && options.allowedSources && !includesIgnoreCase(options.allowedSources, utm.utm_source)) {
+    warnings.push({ key: 'utm_source', message: `"${utm.utm_source}" is not in the configured allowed sources list.` });
+  }
+  const allowedMediums = options.allowedMediums;
+  const mediumNotAllowed = utm.utm_medium
+    ? allowedMediums
+      ? !includesIgnoreCase(allowedMediums, utm.utm_medium)
+      : !KNOWN_MEDIUMS.has(utm.utm_medium.toLowerCase())
+    : false;
+  if (mediumNotAllowed) {
+    const message = allowedMediums
+      ? `"${utm.utm_medium}" is not in the configured allowed mediums list.`
+      : `"${utm.utm_medium}" is not a medium GA4 recognises by default; traffic may show up as "Unassigned".`;
+    warnings.push({ key: 'utm_medium', message });
   }
   if (url.hash.includes('utm_')) {
     warnings.push({ key: 'url', message: 'UTM parameters appear after the #fragment and will not be sent to the server.' });
   }
   return warnings;
+}
+
+function includesIgnoreCase(values: readonly string[], value: string): boolean {
+  const normalized = value.toLowerCase();
+  return values.some((candidate) => candidate.toLowerCase() === normalized);
 }

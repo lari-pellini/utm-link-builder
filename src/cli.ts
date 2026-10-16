@@ -1,9 +1,10 @@
 #!/usr/bin/env node
-import { readFileSync, realpathSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { parseCsv, toCsv } from './csv.ts';
 import { buildUtmUrl, lintUtmUrl } from './utm.ts';
+import type { LintOptions } from './utm.ts';
 
 const HELP = `utm-link-builder
 
@@ -11,11 +12,39 @@ const HELP = `utm-link-builder
     utm build --url https://example.com/promo --source instagram --medium social --campaign black-friday [--content story-1]
 
   Check an existing link:
-    utm lint "https://example.com/?utm_source=Instagram&utm_medium=stories"
+    utm lint "https://example.com/?utm_source=Instagram&utm_medium=stories" [--config utm.config.json]
 
   Build links in bulk from a CSV (columns: url,source,medium,campaign,content,term):
     utm csv campaigns.csv > links.csv
 `;
+
+function readLintOptions(path: string, explicit: boolean): LintOptions {
+  if (!existsSync(path)) {
+    if (explicit) throw new Error(`Config file not found: ${path}`);
+    return {};
+  }
+
+  let config: unknown;
+  try {
+    config = JSON.parse(readFileSync(path, 'utf8'));
+  } catch (err) {
+    throw new Error(`Could not read config file ${path}: ${(err as Error).message}`);
+  }
+  if (!config || typeof config !== 'object' || Array.isArray(config)) {
+    throw new Error('UTM config must be a JSON object');
+  }
+
+  const readList = (key: 'allowedSources' | 'allowedMediums'): string[] | undefined => {
+    const value = (config as Record<string, unknown>)[key];
+    if (value === undefined) return undefined;
+    if (!Array.isArray(value) || value.some((item) => typeof item !== 'string' || !item.trim())) {
+      throw new Error(`UTM config "${key}" must be an array of non-empty strings`);
+    }
+    return value.map((item: string) => item.trim());
+  };
+
+  return { allowedSources: readList('allowedSources'), allowedMediums: readList('allowedMediums') };
+}
 
 export function run(argv: string[]): { output: string; ok: boolean } {
   const [command, ...rest] = argv;
@@ -30,9 +59,11 @@ export function run(argv: string[]): { output: string; ok: boolean } {
       content: { type: 'string' },
       term: { type: 'string' },
       separator: { type: 'string', default: '-' },
+      config: { type: 'string' },
     },
   });
   const separator = values.separator === '_' ? '_' : '-';
+  if (values.config && command !== 'lint') throw new Error('--config can only be used with lint');
 
   if (command === 'build') {
     if (!values.url) throw new Error('--url is required');
@@ -46,9 +77,11 @@ export function run(argv: string[]): { output: string; ok: boolean } {
 
   if (command === 'lint') {
     if (!positionals.length) throw new Error('Pass at least one link to check');
+    const configPath = values.config ?? 'utm.config.json';
+    const lintOptions = readLintOptions(configPath, values.config !== undefined);
     let ok = true;
     const report = positionals.map((link) => {
-      const warnings = lintUtmUrl(link);
+      const warnings = lintUtmUrl(link, lintOptions);
       if (warnings.length) ok = false;
       return [link, ...(warnings.length ? warnings.map((w) => `  ⚠️  ${w.key}: ${w.message}`) : ['  ✅ No problems found.'])].join('\n');
     });
