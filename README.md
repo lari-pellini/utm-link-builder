@@ -41,6 +41,16 @@ node src/cli.ts csv examples/campaigns.csv > links.csv
 
 The CSV needs a `url` column plus any of `source`, `medium`, `campaign`, `content`, `term`. A `final_url` column is appended (or `ERROR: …` for incomplete rows). Use `--separator _` if your team prefers `black_friday`.
 
+## Web UI
+
+The dependency-free builder is available in [`index.html`](index.html). From the repository root, start a static server and open `http://localhost:8000`:
+
+```bash
+python3 -m http.server 8000
+```
+
+It builds and checks links entirely in the browser. The page imports a small JavaScript copy of the CLI's UTM helpers so it works without a build step or external services. GitHub Pages can also serve the repository root directly.
+
 ## As a library
 
 ```ts
@@ -58,7 +68,7 @@ npm test
 npm run typecheck
 ```
 
-Ideas for contributions: a tiny web UI, a Google Sheets Apps Script version, custom medium allow-lists per team. See [CONTRIBUTING.md](CONTRIBUTING.md).
+Ideas for contributions: custom medium allow-lists per team or a Google Sheets Apps Script version. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ---
 

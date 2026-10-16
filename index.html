@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Build a clean, tagged campaign URL with live UTM checks. Everything runs in your browser.">
+  <title>UTM Link Builder</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #19231f;
+      background: #f4f7f4;
+      font-synthesis: none;
+      text-rendering: optimizeLegibility;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-width: 320px; }
+    main { width: min(100% - 32px, 760px); margin: 56px auto; }
+    header { margin-bottom: 24px; }
+    .eyebrow { color: #386c58; font-size: .78rem; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }
+    h1 { margin: 10px 0 8px; font-size: clamp(2rem, 6vw, 3.1rem); letter-spacing: -.045em; line-height: 1.05; }
+    header p { max-width: 560px; color: #56645d; line-height: 1.6; }
+    .card { padding: clamp(20px, 5vw, 36px); border: 1px solid #dce5de; border-radius: 20px; background: #fff; box-shadow: 0 18px 50px #21392d0d; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 16px; }
+    .wide { grid-column: 1 / -1; }
+    label { display: block; margin-bottom: 7px; font-size: .9rem; font-weight: 680; }
+    .optional { color: #77827c; font-weight: 450; }
+    input, textarea { width: 100%; border: 1px solid #cbd6ce; border-radius: 9px; background: #fff; color: inherit; font: inherit; }
+    input { height: 44px; padding: 0 12px; }
+    textarea { min-height: 82px; padding: 12px; resize: vertical; line-height: 1.5; }
+    input:focus, textarea:focus { border-color: #287451; outline: 3px solid #28745124; }
+    .hint { margin: 7px 0 0; color: #77827c; font-size: .8rem; }
+    .result { margin-top: 28px; padding-top: 24px; border-top: 1px solid #e5ebe6; }
+    .result-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    h2 { margin: 0 0 12px; font-size: 1.05rem; }
+    button { min-height: 40px; padding: 0 16px; border: 0; border-radius: 9px; background: #176b48; color: #fff; font: inherit; font-size: .9rem; font-weight: 700; cursor: pointer; }
+    button:hover:not(:disabled) { background: #105437; }
+    button:disabled { background: #aeb9b1; cursor: not-allowed; }
+    #status { min-height: 1.3em; margin: 10px 0 0; color: #56645d; font-size: .88rem; }
+    .warning-title { margin: 18px 0 7px; font-size: .85rem; font-weight: 700; }
+    #warnings { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; }
+    #warnings li { padding: 9px 11px; border-radius: 8px; background: #fff7e8; color: #714c0b; font-size: .84rem; line-height: 1.4; }
+    #warnings li.ok { background: #edf7f0; color: #286045; }
+    footer { margin: 18px 4px 0; color: #77827c; font-size: .8rem; text-align: center; }
+    @media (max-width: 560px) {
+      main { margin: 28px auto; }
+      .grid { grid-template-columns: 1fr; gap: 15px; }
+      .wide { grid-column: auto; }
+      .result-head { align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div class="eyebrow">Campaign link helper</div>
+      <h1>UTM Link Builder</h1>
+      <p>Build a tagged URL and catch common tracking issues before you share it. Your values stay in this browser.</p>
+    </header>
+
+    <section class="card" aria-label="Build a campaign URL">
+      <form id="builder" novalidate>
+        <div class="grid">
+          <div class="wide">
+            <label for="url">Destination URL</label>
+            <input id="url" name="url" type="url" autocomplete="url" value="https://example.com/promo" required>
+          </div>
+          <div>
+            <label for="source">Source <span class="optional">· utm_source</span></label>
+            <input id="source" name="source" value="newsletter" autocomplete="off" required>
+            <p class="hint">Who sends the traffic? For example, google or newsletter.</p>
+          </div>
+          <div>
+            <label for="medium">Medium <span class="optional">· utm_medium</span></label>
+            <input id="medium" name="medium" value="stories" autocomplete="off" required>
+            <p class="hint">How does it arrive? For example, email or social.</p>
+          </div>
+          <div>
+            <label for="campaign">Campaign <span class="optional">· utm_campaign</span></label>
+            <input id="campaign" name="campaign" value="spring-launch" autocomplete="off" required>
+          </div>
+          <div>
+            <label for="content">Content <span class="optional">· optional</span></label>
+            <input id="content" name="content" placeholder="hero-banner" autocomplete="off">
+          </div>
+          <div>
+            <label for="term">Term <span class="optional">· optional</span></label>
+            <input id="term" name="term" placeholder="running-shoes" autocomplete="off">
+          </div>
+        </div>
+      </form>
+
+      <div class="result">
+        <div class="result-head">
+          <h2>Generated link</h2>
+          <button id="copy" type="button" disabled>Copy link</button>
+        </div>
+        <textarea id="output" aria-label="Generated URL" readonly spellcheck="false"></textarea>
+        <p id="status" role="status" aria-live="polite"></p>
+        <p class="warning-title">Live checks</p>
+        <ul id="warnings" aria-live="polite"></ul>
+      </div>
+    </section>
+    <footer>No data is sent anywhere. The page uses the same UTM rules as the command-line tool.</footer>
+  </main>
+
+  <script type="module">
+    import { buildUtmUrl, lintUtmUrl } from './src/utm-browser.js';
+
+    const form = document.querySelector('#builder');
+    const output = document.querySelector('#output');
+    const status = document.querySelector('#status');
+    const warningList = document.querySelector('#warnings');
+    const copyButton = document.querySelector('#copy');
+
+    function update() {
+      warningList.replaceChildren();
+      copyButton.disabled = true;
+      const values = new FormData(form);
+      try {
+        const link = buildUtmUrl(values.get('url').trim(), {
+          source: values.get('source'), medium: values.get('medium'), campaign: values.get('campaign'),
+          content: values.get('content'), term: values.get('term'),
+        });
+        const destination = new URL(link);
+        if (!['http:', 'https:'].includes(destination.protocol)) throw new Error('Destination URL must use http or https.');
+        output.value = link;
+        copyButton.disabled = false;
+        status.textContent = 'Ready to copy. Values are normalized to lowercase and hyphenated.';
+        const warnings = lintUtmUrl(link);
+        if (!warnings.length) {
+          const item = document.createElement('li');
+          item.className = 'ok';
+          item.textContent = 'No lint warnings.';
+          warningList.append(item);
+        } else {
+          for (const warning of warnings) {
+            const item = document.createElement('li');
+            item.textContent = `${warning.key}: ${warning.message}`;
+            warningList.append(item);
+          }
+        }
+      } catch (error) {
+        output.value = '';
+        status.textContent = error instanceof Error ? error.message : 'Enter a valid destination URL.';
+      }
+    }
+
+    form.addEventListener('input', update);
+    copyButton.addEventListener('click', async () => {
+      try {
+        if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(output.value);
+        else {
+          output.select();
+          if (!document.execCommand('copy')) throw new Error('Copy is unavailable in this browser.');
+        }
+        status.textContent = 'Link copied.';
+      } catch {
+        output.select();
+        status.textContent = 'Copy was blocked. Select the link above and copy it manually.';
+      }
+    });
+
+    update();
+  </script>
+</body>
+</html>

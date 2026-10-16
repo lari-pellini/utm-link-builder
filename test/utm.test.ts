@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { run } from '../src/cli.ts';
 import { parseCsv, toCsv } from '../src/csv.ts';
 import { buildUtmUrl, lintUtmUrl, normalize, parseUtm } from '../src/utm.ts';
+import * as browserUtm from '../src/utm-browser.js';
 
 test('normalize trims, lowercases and replaces spaces', () => {
   assert.equal(normalize('  Black Friday 2026 '), 'black-friday-2026');
@@ -25,6 +26,15 @@ test('buildUtmUrl keeps existing query params and the fragment', () => {
 test('buildUtmUrl replaces old UTM values instead of duplicating them', () => {
   const url = buildUtmUrl('https://example.com/?utm_source=old&utm_term=shoes', { source: 'newsletter', medium: 'email', campaign: 'weekly' });
   assert.deepEqual(parseUtm(url), { utm_source: 'newsletter', utm_medium: 'email', utm_campaign: 'weekly' });
+});
+
+test('browser UTM helpers stay in sync with the CLI implementation', () => {
+  const base = 'https://example.com/shop?color=blue&utm_source=old#reviews';
+  const params = { source: 'Newsletter', medium: 'Email', campaign: 'Promoção de Verão', content: 'Story 1' };
+  const built = buildUtmUrl(base, params);
+  assert.equal(browserUtm.buildUtmUrl(base, params), built);
+  assert.deepEqual(browserUtm.parseUtm(built), parseUtm(built));
+  assert.deepEqual(browserUtm.lintUtmUrl(built), lintUtmUrl(built));
 });
 
 test('buildUtmUrl requires source, medium and campaign', () => {
